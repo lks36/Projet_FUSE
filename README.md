@@ -10,6 +10,7 @@ Ce projet a pour but d'explorer la programmation système bas niveau, la gestion
 - Point de montage virtuel
 - Interception des appels système `getattr` (métadonnées) et `readdir` (listing)
 - Simulation de la présence d'un fichier en lecture seule (`bonjour.txt`).
+- Implémentation de la lecture de fichiers (`read`) avec gestion des offsets et des buffers.
 
 ---
 ## Installation et execution
@@ -33,6 +34,8 @@ mkdir point_de_montage
 ./nanofs point_de_montage
 ls -l point_de_montage
 #devrait afficher le fichier virtuel bonjour.txt
+cat point_de_montage/bonjour.txt
+# devrait afficher la chaîne de caractères gérée par le programme C
 umount point_de_montage
 #démonter le système de fichiers proprement
 ```
