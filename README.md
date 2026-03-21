@@ -7,6 +7,7 @@ Ce projet a pour but d'explorer la programmation système bas niveau, la gestion
 ---
 
 ## Fonctionnalités 
+- **Architecture dynamique :** Remplacement des fichiers "hardcodés" par une véritable table d'Inodes en RAM.
 - Point de montage virtuel
 - Interception des appels système `getattr` (métadonnées) et `readdir` (listing)
 - Simulation de la présence d'un fichier en lecture seule (`bonjour.txt`).

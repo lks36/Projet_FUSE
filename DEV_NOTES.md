@@ -7,6 +7,8 @@
 ---
 
 ## Technique (Ce qui fonctionne)
+- **Structure `nano_inode` :** Création de la "carte d'identité" des fichiers (état d'occupation, nom, permissions, taille, pointeur vers le contenu).
+
 - *nano_getattr* : Intercepte les demandes de métadonnées. Renvoie *S_IFDIR* pour la racine / et *S_IFREG* pour notre fichier virtuel
 
 - *nano_readdir* : Remplit le buffer du terminal avec les noms des fichiers virtuels.
@@ -35,8 +37,9 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 
 ## TODO
 ### Bugs
-- Vérifier le comportement des permissions **0444** vs **0777** depuis le Finder macOS par rapport au terminal.
+- Vérifier le comportement des permissions **0444** vs **0777** depuis le Finder macOS par rapport au terminal
+- Mémoire : il faut assurer qu'il n'y a pas de fuites mémoire lors de la création/destruction des inodes à l'avenir
 
 ### Suites
-- on va essayer de passer d'une architecture statique à dynamique
-- Créer une structure **struct inode** en C pour représenter la fiche d'identité générique de n'importe quel fichier, au lieu d'écrire son nom en dur dans le code.
+- la création d'un fichier vide (touch)
+- l'écriture de données (commande echo "texte" > fichier.txt)
