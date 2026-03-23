@@ -41,5 +41,5 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 - Mémoire : il faut assurer qu'il n'y a pas de fuites mémoire lors de la création/destruction des inodes à l'avenir
 
 ### Suites
-- la création d'un fichier vide (touch)
+- README doit mettre à jour !!!!!!!
 - l'écriture de données (commande echo "texte" > fichier.txt)

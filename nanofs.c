@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 //voici la carte d'identité de nos fichiers
 typedef struct {
@@ -39,11 +40,14 @@ static const char *contenu_bonjour = "Bonjour Kun, futur etudiant en Master a la
 static int nano_getattr(const char *path, struct stat *stbuf) {
     //on commence par tout mettre à zéro pour éviter les valeurs indésirables
     memset(stbuf, 0, sizeof(struct stat));
-    int idx = find_inode(path); //on cherche le fichier dans notre disque
-    if (idx == -1) {
-        return -ENOENT; //le fichier n'existe pas dans notre table
-    }
 
+    stbuf->st_uid = getuid(); //propriétaire est l'utilisateur qui lance le programme (---> getuid())
+    stbuf->st_gid = getgid(); //le groupe est le groupe de l'utilisateur
+    //on cherche d'abord le fichier dans notre table d'inodes pour voir s'il existe
+    int idx = find_inode(path); 
+    if (idx == -1) {
+        return -ENOENT; //le fichier n'existe pas, on retourne une erreur "No such file or directory"
+    }
     //si on le trouve, on copie simplement les infos de notre Inode vers FUSE
     stbuf->st_mode = inode_table[idx].mode;
     stbuf->st_size = inode_table[idx].size;
@@ -61,6 +65,14 @@ static int nano_getattr(const char *path, struct stat *stbuf) {
 //liste TOUS les fichiers de notre table
 static int nano_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                         off_t offset, struct fuse_file_info *fi) {
+    // On n'accepte de lister que la racine "/"
+    if (strcmp(path, "/") != 0)
+        return -ENOENT;
+
+    // Un dossier doit toujours contenir "." et ".."
+    filler(buf, ".", NULL, 0);
+    filler(buf, "..", NULL, 0);
+
 //parcourt tout notre disque dur
     for (int i = 1; i < MAX_FILES; i++) { //commence à 1 pour ignorer "/"
         if (inode_table[i].is_used) {
@@ -89,6 +101,40 @@ static int nano_read(const char *path, char *buf, size_t size, off_t offset,
     memcpy(buf, inode_table[idx].content + offset, size);
     
     return size;
+}
+
+//gérer la création de fichier (touch), crée une nouvelle entrée dans notre table d'inodes
+static int nano_mknod(const char *path, mode_t mode, dev_t rdev) {
+    //on vérifie d'abord que le fichier n'existe pas déjà
+    if (find_inode(path) != -1) {
+        return -EEXIST; // fichier existe déjà
+    }
+
+    //on cherche une place libre dans notre table d'inodes
+    int free_idx = -1;
+    //on parcourt la table pour trouver la première case libre
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (inode_table[i].is_used == 0) {
+            free_idx = i;
+            break; // on trouve la première case libre et on s'arrête
+        }
+    }
+
+    //si on n'a pas trouvé de place libre, on retourne une erreur d'espace insuffisant
+    if (free_idx == -1) {
+        return -ENOSPC;
+    }
+
+    //on remplit la nouvelle entrée d'inode avec les infos du fichier à créer, et on marque cette case comme utilisée
+    inode_table[free_idx].is_used = 1;//on marque cette case comme utilisée
+    strcpy(inode_table[free_idx].name, path); //on copie le chemin du fichier dans notre table
+    
+    inode_table[free_idx].mode = S_IFREG | mode; //on indique que c'est un fichier régulier et on ajoute les permissions demandées
+    
+    inode_table[free_idx].size = 0;
+    inode_table[free_idx].content = NULL; //le contenu est vide au départ, on allouera de la mémoire quand on écrira dedans
+
+    return 0; // 0 signifie "Succès" pour le noyau macOS
 }
 
 //préparer notre système de fichiers au démarrage
@@ -121,6 +167,7 @@ static struct fuse_operations nano_oper = {
     .getattr    = nano_getattr, // fonction de récupération des attributs d'un fichier ou dossier
     .readdir    = nano_readdir, // fonction de lecture de dossier
     .read       = nano_read, // fonction de lecture
+    .mknod      = nano_mknod, // fonction de création de fichier
 };
 
 //lance FUSE et lui donne le contrôle
