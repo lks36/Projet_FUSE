@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 //voici la carte d'identité de nos fichiers
 typedef struct {
@@ -162,12 +163,59 @@ static void init_fs() {
     inode_table[1].content = strdup(texte); // strdup copie la chaîne en l'allouant en mémoire
 }
 
+//gérer la modification de la taille d'un fichier (truncate), ajuste la mémoire allouée à notre fichier
+static int nano_truncate(const char *path, off_t size) {
+    int idx = find_inode(path);
+    if (idx == -1) return -ENOENT; //fichier introuvable
+
+    //demande à l'OS d'agrandir ou rétrécir la mémoire allouée à notre fichier
+    char *new_content = realloc(inode_table[idx].content, size);
+    
+    // Si realloc échoue (plus de RAM dispo) et qu'on demandait une taille > 0
+    if (size > 0 && new_content == NULL) {
+        return -ENOMEM; //erreur système :plus de mémoire disponible
+    }
+    
+    inode_table[idx].content = new_content; //on met à jour le pointeur
+    inode_table[idx].size = size;           //on met à jour la taille dans l'Inode
+
+    return 0; // Succès
+}
+
+//gérer l'écriture (echo "text" > fichier), écrit les données dans notre Inode et ajuste la taille si nécessaire
+static int nano_write(const char *path, const char *buf, size_t size, off_t offset,
+                      struct fuse_file_info *fi) {
+    int idx = find_inode(path);
+    if (idx == -1) return -ENOENT;
+
+    //calcul de la taille totale dont on aura besoin après cette écriture
+    size_t new_size = offset + size;
+
+    //si on écrit au-delà de la taille actuelle, on doit agrandir notre zone mémoire
+    if (new_size > inode_table[idx].size) {
+        char *new_content = realloc(inode_table[idx].content, new_size);
+        if (new_content == NULL) {
+            return -ENOMEM;
+        }
+        inode_table[idx].content = new_content;
+        inode_table[idx].size = new_size;
+    }
+
+    // Le coeur de l'écriture : on copie les octets du terminal (buf) dans notre RAM (content)
+    memcpy(inode_table[idx].content + offset, buf, size);
+
+    return size; // retourner le nombre d'octets écrits
+}
+
+
 //reli nos fonctions à fuse pour qu'il puisse les appeler quand il en a besoin
 static struct fuse_operations nano_oper = {
     .getattr    = nano_getattr, // fonction de récupération des attributs d'un fichier ou dossier
     .readdir    = nano_readdir, // fonction de lecture de dossier
     .read       = nano_read, // fonction de lecture
     .mknod      = nano_mknod, // fonction de création de fichier
+    .truncate   = nano_truncate, // fonction de modification de la taille d'un fichier
+    .write      = nano_write,    // fonction d'écriture dans un fichier
 };
 
 //lance FUSE et lui donne le contrôle

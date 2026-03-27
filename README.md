@@ -7,19 +7,23 @@ Ce projet a pour but d'explorer la programmation système bas niveau, la gestion
 ---
 
 ## Fonctionnalités 
-- **Architecture dynamique :** Remplacement des fichiers "hardcodés" par une véritable table d'Inodes en RAM.
-- Point de montage virtuel
-- Interception des appels système `getattr` (métadonnées) et `readdir` (listing)
-- Simulation de la présence d'un fichier en lecture seule (`bonjour.txt`).
-- Implémentation de la lecture de fichiers (`read`) avec gestion des offsets et des buffers.
+- **Point de montage virtuel** géré par FUSE
+- **Architecture dynamique :** Table d'Inodes en RAM gére plusieurs fichiers simultanément
+- **Métadonnées dynamiques :** Interception de getattr avec attribution de l'UID/GID de l'utilisateur courant pour respecter les permissions **POSIX**
+- **Listing :** Implémentation de readdir pour explorer l'arborescence
+- **Création de fichiers** Support de la commande **touch** avec recherche du premier Inode libre
+- **Écriture et Allocation dynamique (write et truncate) :** Support de la redirection de flux
+- Allocation et redimensionnement dynamiques de la mémoire via realloc et memcpy
+- **Lecture (read) :** Support de la commande cat avec gestion précise des offsets.
 
 ---
 ## Installation et execution
 ### Prérequis (macOS Apple Silicon - M1/M2/M3/M4)
 - Un système d'exploitation basé sur macOS
 - GCC (GNU Compiler Collection)
+- macFuse
 
-*puis*
+**MacFuse :**
 ```bash
 brew install --cask macfuse
 ```
@@ -33,9 +37,10 @@ gcc -Wall nanofs.c -D_FILE_OFFSET_BITS=64 -I/usr/local/include/osxfuse -L/usr/lo
 ```bash
 mkdir point_de_montage
 ./nanofs point_de_montage
+touch point_de_montage/secret.txt
+echo "Ceci est un test d'ecriture dynamique en RAM !" > point_de_montage/secret.txt
 ls -l point_de_montage
-#devrait afficher le fichier virtuel bonjour.txt
-cat point_de_montage/bonjour.txt
+cat point_de_montage/secret.txt
 # devrait afficher la chaîne de caractères gérée par le programme C
 umount point_de_montage
 #démonter le système de fichiers proprement
