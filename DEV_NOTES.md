@@ -4,21 +4,24 @@
 - construire un VFS (Virtual File System) en espace utilisateur 
 - transition réussie vers une **architecture dynamique basée sur des Inodes**.
 - système de fichiers est désormais capable d'allouer de la mémoire dynamiquement pour stocker le contenu des fichiers créés par l'utilisateur. Nous avons un véritable **RAM Disk** fonctionnel
+- on a maintenant le cycle complet d'un fichier (Création -> Écriture -> Lecture -> Suppression)
 
 ---
 
 ## Technique (Ce qui fonctionne)
 - **Structure nano_inode :** Création de la "carte d'identité" des fichiers (état d'occupation, nom, permissions, taille, pointeur vers le contenu).
 
-- *nano_getattr* : Intercepte les demandes de métadonnées. Renvoie *S_IFDIR* pour la racine / et *S_IFREG* pour notre fichier virtuel
+- **nano_getattr** : Intercepte les demandes de métadonnées. Renvoie *S_IFDIR* pour la racine / et *S_IFREG* pour notre fichier virtuel
 
-- *nano_readdir* : Remplit le buffer du terminal avec les noms des fichiers virtuels.
+- **nano_readdir** : Remplit le buffer du terminal avec les noms des fichiers virtuels.
 
 - **nano_read** : Implémentation réussie. Permet à la commande **cat** de lire le contenu du fichier **bonjour.txt** en gérant correctement les offsets et la taille du buffer.
 
-- **truncate** :** Ajuste dynamiquement la taille allouée en mémoire via realloc
+- **truncate** : Ajuste dynamiquement la taille allouée en mémoire via realloc
 
-- *write* :** Écrit les données de l'espace utilisateur vers la mémoire RAM allouée à l'Inode
+- **write** : Écrit les données de l'espace utilisateur vers la mémoire RAM allouée à l'Inode
+
+- **unlink** : Suppression logique (Inode) et physique (RAM). Libération du pointeur *content* et remise à zéro de **is_used**.
 ---
 
 ## Contraintes
@@ -31,9 +34,9 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 
 - Si on quitte le programme brutalement, la RAM allouée par **strdup** et **realloc** n'est pas libérée proprement
 
----
+-Les fichiers affichent toujours la date du 1er janvier 1970 car les champs `st_atime` et `st_mtime` ne sont pas encore mis à jour lors des écritures
 
-## Idées
+-On ne peut créer que des fichiers à la racine, pas de mkdir
 
 ---
 
@@ -43,5 +46,4 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 - Mémoire : il faut assurer qu'il n'y a pas de fuites mémoire lors de la création/destruction des inodes à l'avenir
 
 ### Suites
-- README doit mettre à jour !!!!!!!
-- l'écriture de données (commande echo "texte" > fichier.txt)
+- Il faudra pour que les fichiers survivent au démontage du système à voir comment faire

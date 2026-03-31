@@ -207,6 +207,30 @@ static int nano_write(const char *path, const char *buf, size_t size, off_t offs
     return size; // retourner le nombre d'octets écrits
 }
 
+//gérer la suppression de fichier, libère la mémoire allouée et rend la case disponible
+static int nano_unlink(const char *path) {
+    //on cherche d'abord le fichier dans notre table d'inodes pour voir s'il existe
+    int idx = find_inode(path);
+    if (idx == -1) {
+        return -ENOENT; // Le fichier n'existe pas
+    }
+
+    //libère la mémoire allouée pour le contenu du fichier
+    if (inode_table[idx].content != NULL) {
+        //on libère la mémoire allouée pour le contenu du fichier
+        free(inode_table[idx].content);
+        inode_table[idx].content = NULL; // on casse le pointeur
+    }
+
+    //on réinitialise les champs de l'inode pour marquer cette case comme libre
+    inode_table[idx].size = 0;
+    inode_table[idx].mode = 0;
+    //on marque cette case comme libre
+    inode_table[idx].is_used = 0;
+
+    return 0; // Succès de la suppression
+}
+
 
 //reli nos fonctions à fuse pour qu'il puisse les appeler quand il en a besoin
 static struct fuse_operations nano_oper = {
@@ -216,6 +240,7 @@ static struct fuse_operations nano_oper = {
     .mknod      = nano_mknod, // fonction de création de fichier
     .truncate   = nano_truncate, // fonction de modification de la taille d'un fichier
     .write      = nano_write,    // fonction d'écriture dans un fichier
+    .unlink     = nano_unlink,   // fonction de suppression de fichier
 };
 
 //lance FUSE et lui donne le contrôle
