@@ -7,14 +7,10 @@ Ce projet a pour but d'explorer la programmation système bas niveau, la gestion
 ---
 
 ## Fonctionnalités 
-- **Point de montage virtuel** géré par FUSE
-- **Architecture dynamique :** Table d'Inodes en RAM gére plusieurs fichiers simultanément
-- **Métadonnées dynamiques :** Interception de getattr avec attribution de l'UID/GID de l'utilisateur courant pour respecter les permissions **POSIX**
-- **Listing :** Implémentation de readdir pour explorer l'arborescence
-- **Création de fichiers** Support de la commande **touch** avec recherche du premier Inode libre
-- **Écriture et Allocation dynamique (write et truncate) :** Support de la redirection de flux
-- Allocation et redimensionnement dynamiques de la mémoire via realloc et memcpy
-- **Lecture (read) :** Support de la commande cat avec gestion précise des offsets.
+- **Gestion d'un disque binaire persistant**
+- **Lecture du Superblock et de la table d'Inodes**
+- **Résolution de chemins dynamique sur disque**
+- **Création et écriture de fichiers (En cours)**
 
 ---
 ## Installation et execution
@@ -30,20 +26,15 @@ brew install --cask macfuse
 
 ### Compilation
 ```bash
+gcc -Wall mkfs_nano.c -o mkfs_nano
 gcc -Wall nanofs.c -D_FILE_OFFSET_BITS=64 -I/usr/local/include/osxfuse -L/usr/local/lib -lfuse -o nanofs
 ```
 
 ### Utilisation
 ```bash
+./mkfs_nano
 mkdir point_de_montage
 ./nanofs point_de_montage
-touch point_de_montage/secret.txt
-echo "Ceci est un test d'ecriture dynamique en RAM !" > point_de_montage/secret.txt
-ls -l point_de_montage
-cat point_de_montage/secret.txt
-# devrait afficher la chaîne de caractères gérée par le programme C
-umount point_de_montage
-#démonter le système de fichiers proprement
 ```
 
 ---

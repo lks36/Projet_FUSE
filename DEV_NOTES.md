@@ -1,4 +1,4 @@
-# Notes de dev
+# Notes de dev - Phase : Persistance
 
 ## Réflexions
 - construire un VFS (Virtual File System) en espace utilisateur 
@@ -34,9 +34,13 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 
 - Si on quitte le programme brutalement, la RAM allouée par **strdup** et **realloc** n'est pas libérée proprement
 
--Les fichiers affichent toujours la date du 1er janvier 1970 car les champs `st_atime` et `st_mtime` ne sont pas encore mis à jour lors des écritures
+- Les fichiers affichent toujours la date du 1er janvier 1970 car les champs `st_atime` et `st_mtime` ne sont pas encore mis à jour lors des écritures
 
--On ne peut créer que des fichiers à la racine, pas de mkdir
+- On ne peut créer que des fichiers à la racine, pas de mkdir
+
+- **Formatage requis** : Toute modification des structures dans `params.h` nécessite de relancer `./mkfs_nano`
+
+- **Accès séquentiel** : Le parcours de la table d'inodes est en O(N). Pour 100 fichiers c'est invisible, mais ce serait une limite pour un système plus vaste
 
 ---
 
@@ -46,4 +50,6 @@ Le développement nécessite d'autoriser les extensions système tierces ("Benja
 - Mémoire : il faut assurer qu'il n'y a pas de fuites mémoire lors de la création/destruction des inodes à l'avenir
 
 ### Suites
-- Il faudra pour que les fichiers survivent au démontage du système à voir comment faire
+- **Réécrire `mknod`** : cherche un Inode libre sur le disque et y écrive les nouvelles métadonnées
+- **Réécrire `write`** : calculer l'offset du bloc de données (`BLOCK_SIZE * index`) pour y écrire les octets
+- **Gestion du temps** : Ajouter l'horodatage réel.
